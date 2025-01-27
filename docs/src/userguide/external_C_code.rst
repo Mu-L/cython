@@ -97,8 +97,8 @@ match the C ones, and in some cases they shouldn't or can't. In particular:
 
 #. If the header file uses macros to define constants, translate them into a
    normal external variable declaration.  You can also declare them as an
-   :keyword:`enum` if they contain normal :c:type:`int` values.  Note that
-   Cython considers :keyword:`enum` to be equivalent to :c:type:`int`, so do
+   :keyword:`enum` if they contain normal :c:expr:`int` values.  Note that
+   Cython considers :keyword:`enum` to be equivalent to :c:expr:`int`, so do
    not do this for non-int values.
 
 #. If the header file defines a function using a macro, declare it as though
@@ -189,19 +189,19 @@ same applies equally to union and enum declarations.
 +-------------------------+---------------------------------------------+-----------------------------------------------------------------------+
 | C code                  | Possibilities for corresponding Cython Code | Comments                                                              |
 +=========================+=============================================+=======================================================================+
-| .. sourcecode:: c       | ::                                          | Cython will refer to the as ``struct Foo`` in the generated C code.   |
-|                         |                                             |                                                                       |
+| .. code-block:: c       | ::                                          | Cython will refer to the type as ``struct Foo`` in                    |
+|                         |                                             | the generated C code.                                                 |
 |   struct Foo {          |   cdef struct Foo:                          |                                                                       |
 |     ...                 |     ...                                     |                                                                       |
 |   };                    |                                             |                                                                       |
 +-------------------------+---------------------------------------------+-----------------------------------------------------------------------+
-| .. sourcecode:: c       | ::                                          | Cython will refer to the type simply as ``Foo`` in                    |
+| .. code-block:: c       | ::                                          | Cython will refer to the type simply as ``Foo`` in                    |
 |                         |                                             | the generated C code.                                                 |
 |   typedef struct {      |   ctypedef struct Foo:                      |                                                                       |
 |     ...                 |     ...                                     |                                                                       |
 |   } Foo;                |                                             |                                                                       |
 +-------------------------+---------------------------------------------+-----------------------------------------------------------------------+
-| .. sourcecode:: c       | ::                                          | If the C header uses both a tag and a typedef with *different*        |
+| .. code-block:: c       | ::                                          | If the C header uses both a tag and a typedef with *different*        |
 |                         |                                             | names, you can use either form of declaration in Cython               |
 |   typedef struct foo {  |   cdef struct foo:                          | (although if you need to forward reference the type,                  |
 |     ...                 |     ...                                     | you'll have to use the first form).                                   |
@@ -212,7 +212,7 @@ same applies equally to union and enum declarations.
 |                         |   ctypedef struct Foo:                      |                                                                       |
 |                         |     ...                                     |                                                                       |
 +-------------------------+---------------------------------------------+-----------------------------------------------------------------------+
-| .. sourcecode:: c       | ::                                          | If the header uses the *same* name for the tag and typedef, you       |
+| .. code-block:: c       | ::                                          | If the header uses the *same* name for the tag and typedef, you       |
 |                         |                                             | won't be able to include a :keyword:`ctypedef` for it -- but then,    |
 |   typedef struct Foo {  |   cdef struct Foo:                          | it's not necessary.                                                   |
 |     ...                 |     ...                                     |                                                                       |
@@ -267,10 +267,20 @@ routines in the Python/C API. For example,::
 
 will allow you to create Python strings containing null bytes.
 
+Note that Cython comes with ready-to-use declarations of (almost) all C-API functions
+in the cimportable ``cpython.*`` modules.  See the list in
+https://github.com/cython/cython/tree/master/Cython/Includes/cpython
+
+You should always use submodules (e.g. ``cpython.object``, ``cpython.list``) to
+access these functions. Historically Cython has made some of the C-API functions
+available under directly under the ``cpython`` module. However, this is
+deprecated, will be removed eventually, and any new additions will not be added
+there.
+
 Special Types
 --------------
 
-Cython predefines the name ``Py_ssize_t`` for use with Python/C API routines. To
+Cython predefines the name :c:type:`Py_ssize_t` for use with Python/C API routines. To
 make your extensions compatible with 64-bit systems, you should always use
 this type where it is specified in the documentation of Python/C API routines.
 
@@ -361,6 +371,9 @@ are entirely on your own with this feature.  If you want to declare a name
 the C file for it, you can do this using a C name declaration.  Consider this
 an advanced feature, only for the rare cases where everything else fails.
 
+
+.. _verbatim_c:
+
 Including verbatim C code
 -------------------------
 
@@ -393,6 +406,11 @@ It is also possible to combine a header file and verbatim C code::
 In this case, the C code ``#undef int`` is put right after
 ``#include "badheader.h"`` in the C code generated by Cython.
 
+Verbatim C code can also be used for version specific adaptations, e.g. when
+a struct field was added to a library but is not available in older versions:
+
+.. literalinclude:: ../../examples/userguide/external_C_code/struct_field_adaptation.pyx
+
 Note that the string is parsed like any other docstring in Python.
 If you require character escapes to be passed into the C code file,
 use a raw docstring, i.e. ``r""" ... """``.
@@ -411,6 +429,8 @@ declarations.
     Cython module available to another Cython module – you should use the
     :keyword:`cimport` statement for that. Sharing Declarations Between Cython Modules.
 
+.. _inittab_guide:
+    
 Public Declarations
 ---------------------
 
@@ -418,12 +438,12 @@ You can make C types, variables and functions defined in a Cython module
 accessible to C code that is linked together with the Cython-generated C file,
 by declaring them with the public keyword::
 
-    cdef public struct Bunny: # public type declaration
+    cdef public struct Bunny:  # a public type declaration
         int vorpalness
 
-    cdef public int spam # public variable declaration
+    cdef public int spam  # a public variable declaration
 
-    cdef public void grail(Bunny *) # public function declaration
+    cdef public void grail(Bunny *)  # a public function declaration
 
 If there are any public declarations in a Cython module, a header file called
 :file:`modulename.h` file is generated containing equivalent C declarations for
@@ -436,7 +456,7 @@ In this case, the file ``grail_helper.c`` just needs to add
 ``#include "grail.h"`` in order to access the public Cython variables.
 
 A more advanced use case is embedding Python in C using Cython.
-In this case, make sure to call Py_Initialize() and Py_Finalize().
+In this case, make sure to call :c:func:`Py_Initialize()` and :c:func:`Py_Finalize()`.
 For example, in the following snippet that includes :file:`grail.h`:
 
 .. code-block:: c
@@ -453,7 +473,9 @@ For example, in the following snippet that includes :file:`grail.h`:
     }
 
 This C code can then be built together with the Cython-generated C code
-in a single program (or library).
+in a single program (or library). Be aware that this program will not include
+any external dependencies that your module uses. Therefore typically this will
+not generate a truly portable application for most cases.
 
 In Python 3.x, calling the module init function directly should be avoided.  Instead,
 use the `inittab mechanism <https://docs.python.org/3/c-api/import.html#c._inittab>`_
@@ -475,6 +497,32 @@ file consists of the full dotted name of the module, e.g. a module called
     build the Cython extension in the usual way and then link against
     the resulting ``.so`` file like a dynamic library.
     Beware that this is not portable, so it should be avoided.
+
+.. _CYTHON_EXTERN_C:
+    
+C++ public declarations
+^^^^^^^^^^^^^^^^^^^^^^^
+
+When a file is compiled as C++, its public functions are declared as C++ API (using ``extern "C++"``) by default.
+This disallows to call the functions from C code.  If the functions are really meant as a plain C API,
+the ``extern`` declaration needs to be manually specified by the user.
+This can be done by setting the ``CYTHON_EXTERN_C`` C macro to ``extern "C"`` during the compilation of the generated C++ file::
+
+    from setuptools import Extension, setup
+    from Cython.Build import cythonize
+
+    extensions = [
+        Extension(
+            "module", ["module.pyx"],
+            define_macros=[("CYTHON_EXTERN_C", 'extern "C"')],
+            language="c++",
+        )
+    ]
+
+    setup(
+        name="My hello app",
+        ext_modules=cythonize(extensions),
+    )
 
 .. _api:
 
@@ -519,13 +567,13 @@ declarations to be linked with the extension module in any way, as the Python
 import machinery is used to make the connection dynamically. However, only
 functions can be accessed this way, not variables. Note also that for the
 module import mechanism to be set up correctly, the user must call
-Py_Initialize() and Py_Finalize(); if you experience a segmentation fault in
+:c:func:`Py_Initialize()` and :c:func:`Py_Finalize()`; if you experience a segmentation fault in
 the call to :func:`import_modulename`, it is likely that this wasn't done.
 
 You can use both :keyword:`public` and :keyword:`api` on the same function to
 make it available by both methods, e.g.::
 
-    cdef public api void belt_and_braces():
+    cdef public api void belt_and_braces() except *:
         ...
 
 However, note that you should include either :file:`modulename.h` or
@@ -550,8 +598,8 @@ You can declare a whole group of items as :keyword:`public` and/or
 example,::
 
     cdef public api:
-        void order_spam(int tons)
-        char *get_lunch(float tomato_size)
+        void order_spam(int tons) except *
+        char *get_lunch(float tomato_size) except NULL
 
 This can be a useful thing to do in a ``.pxd`` file (see
 :ref:`sharing-declarations`) to make the module's public interface
@@ -561,7 +609,7 @@ Acquiring and Releasing the GIL
 ---------------------------------
 
 Cython provides facilities for acquiring and releasing the
-`Global Interpreter Lock (GIL) <https://docs.python.org/dev/glossary.html#term-global-interpreter-lock>`_.
+Global Interpreter Lock (GIL) (see :term:`our glossary<Global Interpreter Lock or GIL>` or `external documentation <https://docs.python.org/dev/glossary.html#term-global-interpreter-lock>`_).
 This may be useful when calling from multi-threaded code into
 (external C) code that may block, or when wanting to use Python
 from a (native) C thread callback.  Releasing the GIL should
