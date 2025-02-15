@@ -1,8 +1,129 @@
 # This file contains tests corresponding to unresolved bugs using CPython's
 # Limited API which will be skipped in the normal testing run.
 
+min_async
+pep492_badsyntax_async4
+builtin_pycomplex
+builtin_subtype_methods_T653
+builtin_type_inheritance_T608
+builtinslice
+builtin_divmod
+cdivision_CEP_516
+cpp_stl_conversion
+cpp_nonstdint
+run[.]any
+run[.]all
+embedsignatures_python
+embedsignatures_clinic
+extern_builtins_T258
+ext_attribute_cache
+fastcall
+run[.]generators_py
+generator_frame_cycle
+run[.]no_gc
+run[.]numpy
+line_trace
+longintrepr
+pstats_profile_test
+py35_pep492_interop
+py_ucs4_type
+pep442_tp_finalize
+test_asyncgen
+tracebacks
+tss
+sys_monitoring
+special_method_docstrings
+run[.]ufunc
+slice2b
+verbatiminclude
+test_coroutines_pep492
+coverage
+reimport_failure
+line_profile_test
+cdef_multiple_inheritance_errors
+cline_in_traceback
+module_init_error
+
+# segfault
+run[.]type_inference
+
+# Something to do with complex
+view_count
+matrix_with_buffer
+fused_types
+pycapsule
+r_extcomplex2
+
+# cimport cpython
+clone
+overhead
+cython_array
+memoryview_inplace_division
+clear_to_null
+cpython_capi_py35
+cython_includes
+cdef_bool_T227
+datetime_cimport
+datetime_pxd
+datetime_members
+run[.]exttype
+isinstance
+pycontextvar
+run[.]pytype
+run[.]pyarray
+pyclass_special_methods
+time_pxd
+array_cimport
+
+# Relies on Numpy being OK in the Limited API (which is version-dependent)
+# TODO - these can be re-enabled later as we update test dependencies.
+complex_extern_GH1433
+extension_type_memoryview
+numpy_memoryview
+memoryviewattrs
 convolve2
-dict_animal
-not_none
-queue3
-test_queue
+
+# example in docs that use features unavailable in the limited API
+# (and it's a decision for the docs writers rather than a limitation
+# of Cython's support)
+embedded
+extension_types.c_property
+array.resize
+array.safe_usage
+array.unsafe_usage
+wrapping_CPlusPlus.python_to_cpp
+
+# Tests explicitly use internals
+compile[.]pylong
+extern_varobject_extensions
+
+# Inherit builtin type: PEP697
+bytearraymethods
+cdef_subclass_builtin
+ext_auto_richcmp
+pylistsubtype
+r_hordijk1
+trashcan
+unbound_special_methods
+unicode_formatting
+
+# Needs multi-phase import
+# (but is there a reason why we're not doing this in the Limited API anyway?)
+unicode_imports
+
+# Py_UNICODE
+builtin_ord
+for_in_string
+fstring
+run[.]inop
+run[.]notinop
+py_unicode_strings
+py_unicode_type
+unicode_indexing
+
+# Works on DW's computer, fails on CI on Python3.11 only with exactly the same versions
+# (might be due to shared ABI possibly?)
+yield_from_pep380
+
+# Excluded for now - to be enabled incrementally
+buffers[.]

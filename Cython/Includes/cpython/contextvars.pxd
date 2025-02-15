@@ -1,11 +1,13 @@
 from cpython.object cimport PyObject
 from cpython.ref cimport Py_XDECREF
 
-cdef extern from "Python.h":
-    # Defining PyContextVar_Get() below to always return the default value for Py<3.7
+cimport cython as _cython
+
+cdef extern from *:
+    # Defining PyContextVar_Get() below to always return the default value for Py<3.7 and PyPy<7.3.6
     # to make the inline functions sort-of work.
     """
-    #if PY_VERSION_HEX < 0x030700b1 && !defined(PyContextVar_Get)
+    #if (CYTHON_COMPILING_IN_PYPY && PYPY_VERSION_NUM < 0x07030600) && !defined(PyContextVar_Get)
     #define PyContextVar_Get(var, d, v) \
         ((d) ? \
             ((void)(var), Py_INCREF(d), (v)[0] = (d), 0) : \
@@ -14,6 +16,7 @@ cdef extern from "Python.h":
     #endif
     """
 
+cdef extern from "Python.h":
     ############################################################################
     # Context Variables Objects
     ############################################################################
@@ -109,12 +112,13 @@ cdef extern from "Python.h":
     # This function returns 0 on success and -1 on error.
 
 
+@_cython.c_compile_guard("!CYTHON_COMPILING_IN_LIMITED_API")
 cdef inline object get_value(var, default_value=None):
     """Return a new reference to the value of the context variable,
     or the default value of the context variable,
     or None if no such value or default was found.
     """
-    cdef PyObject *value
+    cdef PyObject *value = NULL
     PyContextVar_Get(var, NULL, &value)
     if value is NULL:
         # context variable does not have a default
@@ -126,13 +130,14 @@ cdef inline object get_value(var, default_value=None):
     return pyvalue
 
 
+@_cython.c_compile_guard("!CYTHON_COMPILING_IN_LIMITED_API")
 cdef inline object get_value_no_default(var, default_value=None):
     """Return a new reference to the value of the context variable,
     or the provided default value if no such value was found.
 
     Ignores the default value of the context variable, if any.
     """
-    cdef PyObject *value
+    cdef PyObject *value = NULL
     PyContextVar_Get(var, <PyObject*>default_value, &value)
     # value of context variable or 'default_value'
     pyvalue = <object>value

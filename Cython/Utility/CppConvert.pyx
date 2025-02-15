@@ -25,7 +25,7 @@ cdef extern from *:
         char* data()
         size_t size()
 
-{{for py_type in ['PyObject', 'PyUnicode', 'PyStr', 'PyBytes', 'PyByteArray']}}
+{{for py_type in ['PyObject', 'PyUnicode', 'PyBytes', 'PyByteArray']}}
 cdef extern from *:
     cdef object __Pyx_{{py_type}}_FromStringAndSize(const char*, size_t)
 
@@ -36,30 +36,60 @@ cdef inline object {{cname.replace("PyObject", py_type, 1)}}(const string& s):
 
 
 #################### vector.from_py ####################
+#@requires: ObjectHandling.c::LengthHint
 
 cdef extern from *:
     cdef cppclass vector "std::vector" [T]:
         void push_back(T&) except +
+        void reserve(size_t) except +
+
+    cdef Py_ssize_t __Pyx_PyObject_LengthHint(object o, Py_ssize_t defaultval) except -1
 
 @cname("{{cname}}")
 cdef vector[X] {{cname}}(object o) except *:
+
     cdef vector[X] v
+    cdef Py_ssize_t s = __Pyx_PyObject_LengthHint(o, 0)
+
+    if s > 0:
+        v.reserve(<size_t> s)
+
     for item in o:
         v.push_back(<X>item)
+
     return v
 
 
 #################### vector.to_py ####################
 
 cdef extern from *:
-    cdef cppclass vector "const std::vector" [T]:
+    cdef cppclass vector "std::vector" [T]:
         size_t size()
         T& operator[](size_t)
 
-@cname("{{cname}}")
-cdef object {{cname}}(vector[X]& v):
-    return [v[i] for i in range(v.size())]
+cdef extern from "Python.h":
+    void Py_INCREF(object)
+    list PyList_New(Py_ssize_t size)
+    int __Pyx_PyList_SET_ITEM(object list, Py_ssize_t i, object o) except -1
+    const Py_ssize_t PY_SSIZE_T_MAX
 
+@cname("{{cname}}")
+cdef object {{cname}}(const vector[X]& v):
+    if v.size() > <size_t> PY_SSIZE_T_MAX:
+        raise MemoryError()
+    v_size_signed = <Py_ssize_t> v.size()
+
+    o = PyList_New(v_size_signed)
+
+    cdef Py_ssize_t i
+    cdef object item
+
+    for i in range(v_size_signed):
+        item = v[i]
+        Py_INCREF(item)
+        __Pyx_PyList_SET_ITEM(o, i, item)
+
+    return o
 
 #################### list.from_py ####################
 
@@ -87,14 +117,32 @@ cdef extern from *:
             bint operator!=(const_iterator)
         const_iterator begin()
         const_iterator end()
+        size_t size()
+
+cdef extern from "Python.h":
+    void Py_INCREF(object)
+    list PyList_New(Py_ssize_t size)
+    void __Pyx_PyList_SET_ITEM(object list, Py_ssize_t i, object o)
+    cdef Py_ssize_t PY_SSIZE_T_MAX
 
 @cname("{{cname}}")
 cdef object {{cname}}(const cpp_list[X]& v):
-    o = []
+    if v.size() > <size_t> PY_SSIZE_T_MAX:
+        raise MemoryError()
+
+    o = PyList_New(<Py_ssize_t> v.size())
+
+    cdef object item
+    cdef Py_ssize_t i = 0
     cdef cpp_list[X].const_iterator iter = v.begin()
+
     while iter != v.end():
-        o.append(cython.operator.dereference(iter))
+        item = cython.operator.dereference(iter)
+        Py_INCREF(item)
+        __Pyx_PyList_SET_ITEM(o, i, item)
         cython.operator.preincrement(iter)
+        i += 1
+
     return o
 
 
@@ -127,12 +175,7 @@ cdef extern from *:
 
 @cname("{{cname}}")
 cdef object {{cname}}(const cpp_set[X]& s):
-    o = set()
-    cdef cpp_set[X].const_iterator iter = s.begin()
-    while iter != s.end():
-        o.add(cython.operator.dereference(iter))
-        cython.operator.preincrement(iter)
-    return o
+    return {v for v in s}
 
 #################### pair.from_py ####################
 
@@ -172,9 +215,8 @@ cdef extern from *:
 
 @cname("{{cname}}")
 cdef map[X,Y] {{cname}}(object o) except *:
-    cdef dict d = o
     cdef map[X,Y] m
-    for key, value in d.iteritems():
+    for key, value in o.items():
         m.insert(pair[X,Y](<X>key, <Y>value))
     return m
 
